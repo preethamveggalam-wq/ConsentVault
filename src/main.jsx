@@ -33,6 +33,17 @@ function Requester({session,page,flash,transaction}){
   const [chatEncounter,setChatEncounter]=useState(null);
   const load=async()=>{try{const d=await api('/requester/state',{headers:{Authorization:`Bearer ${session.token}`}});setState(d);if(selected){const found=d.encounters.find(e=>e.id===selected.id);if(found)setSelected(found)}}catch(e){flash(e.message)}};
   useEffect(()=>{load();const t=setInterval(load,2200);return()=>clearInterval(t)},[]);
+  // Automatically move to Clinical Monitoring after the patient's Health Profile request is approved.
+  useEffect(()=>{
+    if(!selected)return;
+    const profileApproved=state.profileApprovals.some(x=>x.encounterId===selected.id);
+    const monitoringExists=state.requests.some(r=>r.encounterId===selected.id&&r.stage==='MONITORING'&&['PENDING_PATIENT_REVIEW','PAYMENT_PENDING_PATIENT','PAYMENT_PENDING_REQUESTER','ACTIVE'].includes(r.status));
+    if(profileApproved && !monitoringExists && stage==='PROFILE'){
+      setStage('MONITORING');
+      const a=autoForEncounter(selected,'MONITORING');
+      setCats(a.categories);setConds(a.issues);setPurpose(a.purpose);setDuration(1);setManual(false);
+    }
+  },[state.profileApprovals,state.requests,selected,stage]);
   const autoForEncounter=(e,nextStage='PROFILE')=>{
     if(!e)return {issues:[],categories:[],purpose:'',duration:1};
     const issues=(e.healthIssues||[]).filter(x=>x&&x!=='None / No known condition');

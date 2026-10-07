@@ -15,8 +15,21 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const seed={users:[],encounters:[],requests:[],payments:[],audit:[],chats:[],sessions:[],checkups:[]};
 function read(){try{return JSON.parse(fs.readFileSync(storeFile,'utf8'))}catch{return clone(seed)}}
 function write(){fs.mkdirSync(path.dirname(storeFile),{recursive:true});fs.writeFileSync(storeFile,JSON.stringify(db,null,2))}
-let db=read(); for(const k of Object.keys(seed)) if(!Array.isArray(db[k])) db[k]=[]; for(const s of db.sessions){if(s?.token&&s?.userId) sessions.set(s.token,s)}
-const sessions=new Map(); const token=()=>crypto.randomBytes(32).toString('hex'); const id=p=>`${p}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+const sessions=new Map();
+const token=()=>crypto.randomBytes(32).toString('hex');
+const id=p=>`${p}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+let db=read();
+
+for(const k of Object.keys(seed)){
+  if(!Array.isArray(db[k])) db[k]=[];
+}
+
+for(const s of db.sessions){
+  if(s?.token&&s?.userId){
+    sessions.set(s.token,s);
+  }
+}
 function auth(req,res,next){const t=(req.headers.authorization||'').replace(/^Bearer\s+/,'');const s=sessions.get(t);if(!s)return res.status(401).json({error:'Session expired. Please sign in again.'});req.user=s;next()}
 function user(uid){return db.users.find(u=>u.id===uid)}
 function normalizePhone(phone){let n=String(phone||'').replace(/\D/g,'');if(n.startsWith('00'))n=n.slice(2);if(n.startsWith('91')&&n.length===12)n=n.slice(2);if(n.length>10)n=n.slice(-10);return n}
